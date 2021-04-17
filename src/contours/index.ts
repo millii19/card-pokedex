@@ -14,8 +14,8 @@ export const getDrawableContours = async (image: cv.Mat) => {
     return contours.map((contour) => contour.getPoints())
 }
 
-export const canny = async (image: cv.Mat) => {
-    const img = image.copy().getRegion(new cv.Rect(50, 50, image.cols - 100, image.rows -100))
+export const canny = async (image: cv.Mat, draw=false) => {
+    const img = image.copy().getRegion(new cv.Rect(50, 50, image.cols - 50, image.rows - 50))
     //const bin = new cv.Mat(image.rows, image.cols, cv.THRESH_BINARY, 0)
     const imgGray = await (await image.blurAsync(new cv.Size(10, 10)))//.cvtColorAsync(cv.COLOR_BGR2GRAY) //await image.cvtColorAsync(cv.COLOR_BGR2GRAY)
     const edges = (await imgGray.cannyAsync(0, 50)).getRegion(new cv.Rect(50, 50, image.cols - 100, image.rows -100))
@@ -28,16 +28,31 @@ export const canny = async (image: cv.Mat) => {
     const lines = await edges.houghLinesAsync(1, math.pi/270, 210)
 
     const grouped = segmentByAngle(lines)
-    console.log(`${lines.length} = ${Object.keys(grouped).map(k => grouped[k].length)}`)
     
-    grouped[0].map(line => drawLine(img, line, new cv.Vec3(0, 255, 0)))
-    grouped[1].map(line => drawLine(img, line, new cv.Vec3(255, 0, 0)))
+    if (draw) grouped[0].map(line => drawLine(img, line, new cv.Vec3(0, 255, 0)))
+    if (draw) grouped[1].map(line => drawLine(img, line, new cv.Vec3(255, 0, 0)))
 
     const intersections = segmentedIntersections(grouped)
-    intersections.forEach(pt => img.drawCircle(pt, 5, new cv.Vec3(0, 0, 255), 10))
+    if (draw) intersections.forEach(pt => img.drawCircle(pt, 5, new cv.Vec3(0, 0, 255), 10))
+
+    const c1 = getClosestPoint(new cv.Point2(0, 0), intersections)
+    const c2 = getClosestPoint(new cv.Point2(img.cols, 0), intersections)
+    const c3 = getClosestPoint(new cv.Point2(0, img.rows), intersections)
+    const c4 = getClosestPoint(new cv.Point2(img.cols, img.rows), intersections)
+
+    const corners = [c1, c2, c4, c3]
+    if (draw) corners.map(c => img.drawCircle(c, 10, new cv.Vec3(0, 255, 255), 20))
+    const imgCorners = [
+        new cv.Point2(img.cols, img.rows),
+        new cv.Point2(0, img.rows),
+        new cv.Point2(0, 0),
+        new cv.Point2(img.cols, 0),
+    ]
+    if (draw) imgCorners.map(c => img.drawCircle(c, 50, new cv.Vec3(255, 255, 0), 20))
+    await cv.imwriteAsync(`temp/canny/img-${new Date().valueOf()}.jpg`, img)
     
     //image.drawLine(lines.)
-    return img
+    return corners.map(c => new cv.Point2(c.x + 50, c.y + 50))
 }
 
 // https://stackoverflow.com/questions/46565975/find-intersection-point-of-two-lines-drawn-using-houghlines-opencv
@@ -107,3 +122,21 @@ const segmentedIntersections = (lines: {}) => {
 
     return intersections
 }
+
+const distance = (point1: cv.Point2, point2: cv.Point2) => math.sqrt(math.square(point1.x - point2.x) + math.square(point1.y - point2.y))
+
+const getClosestPoint = (point: cv.Point2, points: cv.Point2[]) => {
+    let min = points[0]
+    let minDist = distance(points[0], point)
+
+    for (const p of points) {
+        const dist = distance(p, point)
+        if (dist < minDist) {
+            min = p
+            minDist = dist
+        }
+    }
+
+    return min
+}
+

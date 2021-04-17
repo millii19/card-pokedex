@@ -14,14 +14,14 @@ const processImage = async (image: cv.Mat, dest: string) => {
     //image = await image.blurAsync(new cv.Size(10, 10))
     const rr = await detectRotatedRect(image)
     const contours = await getDrawableContours(image)
-    const edges = await canny(image)
+    const edges = await canny(image, true)
     // x, y, width, height
-    image.drawRectangle(new cv.Rect(50, 50, image.cols - 100, image.rows -100), new cv.Vec3(255, 0, 0), 20)
-    image.drawPolylines([rr], true, new cv.Vec3(0, 255, 0), 30)
+    //image.drawRectangle(new cv.Rect(50, 50, image.cols - 100, image.rows -100), new cv.Vec3(255, 0, 0), 20)
+    image.drawPolylines([edges], true, new cv.Vec3(0, 255, 0), 30)
     // @ts-ignore
-    image.drawContours([contours[0]], -1, new cv.Vec3(0, 0, 255), 10)
+    //image.drawContours([contours[0]], -1, new cv.Vec3(0, 0, 255), 10)
     await cv.imwriteAsync(dest, image)
-    await cv.imwriteAsync(path.join(path.dirname(dest), `edge_${path.basename(dest)}`), edges)
+    //await cv.imwriteAsync(path.join(path.dirname(dest), `edge_${path.basename(dest)}`), edges)
     
 
 }
